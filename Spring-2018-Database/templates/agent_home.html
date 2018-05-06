@@ -1,13 +1,213 @@
 <html>
-
-<head>
-
-</head>
-
+<title>agent_home</title>
+<head></head>
 <body>
-<p>Hello {{userType}} {{ID}}</p>
+<h>Hello {{ID}} {{agent_id}}</h>
+
+{% if purchase%}
+{{purchase}}
+{% endif %}
+<div class="flights">
+    <p2>Search your flights between specified dates:</p2>
+    <form action="/agent_home_flights" method="POST">
+        Start date:<input type="date" name="start_date">
+        End date:<input type="date" name="end_date"></br>
+        <input type="submit" value="search">
+    </form>
+    {% if flight %}
+    <table>
+    <th>Customer Email</th>
+    <th>Airline Name</th>
+    <th>Airplane#</th>
+    <th>Flight#</th>
+    <th>Departure Airport</th>
+    <th>Departure Time</th>
+    <th>Arrival Airport</th>
+    <th>Arrival Time</th>
+    <th>Ticket Price</th>
+    <th>Status</th>
+    {% for flights in flight %}
+    <tr>
+        <td>{{flights.customer_email}}</td>
+        <td>{{flights.airline_name}}</td>
+        <td>{{flights.airplane_id}}</td>
+        <td>{{flights.flight_num}}</td>
+        <td>{{flights.departure_airport}}</td>
+        <td>{{flights.departure_time}}</td>
+        <td>{{flights.arrival_airport}}</td>
+        <td>{{flights.arrival_time}}</td>
+        <td>{{flights.price}}</td>
+        <td>{{flights.status}}</td>
+    </tr>
+    {% endfor %}
+    </table>
+    {% endif %}
+</div>
+
+<ul class="entries">
+
+    {% if entries %}
+    <table>
+        <th>Customer Email</th>
+        <th>Airline Name</th>
+        <th>Airplane#</th>
+        <th>Flight#</th>
+        <th>Departure Airport</th>
+        <th>Departure Time</th>
+        <th>Arrival Airport</th>
+        <th>Arrival Time</th>
+        <th>Ticket Price</th>
+        <th>Status</th>
+        {% for flight in entries %}
+        <tr>
+            <td>{{flight.customer_email}}</td>
+            <td>{{flight.airline_name}}</td>
+            <td>{{flight.airplane_id}}</td>
+            <td>{{flight.flight_num}}</td>
+            <td>{{flight.departure_airport}}</td>
+            <td>{{flight.departure_time}}</td>
+            <td>{{flight.arrival_airport}}</td>
+            <td>{{flight.arrival_time}}</td>
+            <td>{{flight.price}}</td>
+            <td>{{flight.status}}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+</ul>
+
+<div class="search">
+<form action="/agent_home_search" method="POST">
+    Departure city: <input type="text" name="departure_city" placeholder="source city">
+    Departure airport: <input type="text" name="departure_airport" placeholder="source airport"></br>
+    Destination city: <input type="text" name="arrival_city" placeholder="destination city">
+    Destination airport: <input type="text" name="arrival_airport" placeholder="destination airport"></br>
+    Departure date: <input type="date" name="departure_date" placeholder="departure date"></br>
+    <input type="submit" value="search">
+</form>
+
+{% if search %}
+<table>
+    <th>Airline Name</th>
+    <th>Airplane#</th>
+    <th>Flight#</th>
+    <th>Departure Airport</th>
+    <th>Departure Time</th>
+    <th>Arrival Airport</th>
+    <th>Arrival Time</th>
+    <th>Ticket Price</th>
+    <th>Status</th>
+
+
+    {% for flight in search %}
+    <tr>
+        <td>{{flight.airline_name}} </td>
+        <td>{{flight.airplane_id}}</td>
+        <td>{{flight.flight_num}}</td>
+        <td>{{flight.departure_airport}}</td>
+        <td>{{flight.departure_time}}</td>
+        <td>{{flight.arrival_airport}}</td>
+        <td>{{flight.arrival_time}}</td>
+        <td>{{flight.price}}</td>
+        <td>{{flight.status}}</td>
+        <form action="/agent_home_purchase" method="POST">
+            <input type="hidden" name = "airline_name" value = '{{flight.airline_name}}'>
+            <input type="hidden" name="flight_num" value={{flight.flight_num}}>
+            <input type="email" name="customer_email" placeholder="Please input the customer email">
+            <td><input type="submit" value="purchase"></td>
+        </form>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+
+{% if error %}
+<p class="error"><strong>Error:</strong> {{error}}</p>
+{% endif %}
+</div>
+
+<div class="commission">
+    {% if commission %}
+    <p1>Your commission in the past 30 days is {{commission.commission}}</p1></br>
+    <p2>The average commssion you received per ticket in the past 30 days is {{avg_comm.avg_comm}}</p2></br>
+    <p3>The total number of tickets sold by you in the past 30 days is {{num_ticket.num_ticket}}</p3>
+    {% endif %}
+</div>
+
+<div class="topCustomers">
+    {% if cust_tk %}
+    <p1>The top 5 customers based on number of tickets bought from you in the past 6 months:</p1>
+    <table>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Number of Tickets</th>
+        {% for customer in cust_tk %}
+        <tr>
+            <td>{{customer.name}}</td>
+            <td>{{customer.email}}</td>
+            <td>{{customer.num_ticket}}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+
+    {% if cust_comm %}
+    <p2>The top 5 customers based on amount of commission in the past year:</p2>
+    <table>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Commssion</th>
+        {% for customer in cust_comm %}
+        <tr>
+            <td>{{customer.name}}</td>
+            <td>{{customer.email}}</td>
+            <td>{{customer.commission}}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <div id="chart_div"></div>
+    <div id="chart_div1"></div>
+    <script type="text/javascript">
+        google.charts.load('current', {packages: ['corechart','bar']});
+        google.charts.setOnLoadCallback(drawChartTK);
+
+
+        function drawChartTK(){
+            //create the data table
+            var tk_data = new google.visualization.DataTable();
+            tk_data.addColumn('string','Name');
+            tk_data.addColumn('number','Number of Tikcet');
+            row = {{cust_tk_data|tojson}};
+            tk_data.addRows(row);
+            var options = {'title':'Top 5 customers based on num_ticket','width':400,'height':500};
+
+            //draw the chart
+            var chart = new google.visualization.BarChart(document.getElementById('chart_div'));
+            chart.draw(tk_data,options);
+        }
+
+        google.charts.setOnLoadCallback(drawChartComm);
+
+        function drawChartComm(){
+            var comm_data = new google.visualization.DataTable();
+            comm_data.addColumn('string','Name');
+            comm_data.addColumn('number','Commission');
+            row = {{cust_comm_data|tojson}};
+            comm_data.addRows(row);
+
+            var option = {'title':'Top 5 customers based on commission', 'width':400,'height':500};
+
+            var charts = new google.visualization.BarChart(document.getElementById('chart_div1'));
+            charts.draw(comm_data,option);
+        }
+    </script>
+</div>
+
+
 <a href="/logout">Logout</a>
 
 </body>
-
 </html>

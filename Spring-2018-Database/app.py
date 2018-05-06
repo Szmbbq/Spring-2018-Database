@@ -4,6 +4,9 @@ import pymysql.cursors
 from passlib.hash import md5_crypt
 from util import *
 from functools import wraps
+import random
+from customer import *
+from agent import *
 
 
 #Initialize the app from Flask
@@ -191,11 +194,12 @@ def home():
     ID = session['ID'] if 'ID' in session else None
     userType = session['userType'] if 'userType' in session else None
     airline_name = session['airline_name'] if 'airline_name' in session else None
+    booking_agent_id = session['booking_agent_id'] if 'booking_agent_id' in session else None
 
     if userType == 'customer':
-        return render_template('customer_home.html', ID=ID, userType=userType)
+        return redirect(url_for('customer_home', ID=ID, userType=userType))
     elif userType == 'booking_agent':
-        return render_template('agent_home.html', ID=ID, userType=userType)
+        return redirect(url_for('agent_home', ID=ID, userType=userType, booking_agent_id=booking_agent_id))
     elif userType == 'airline_staff':
         return redirect(url_for('staff_home', ID=ID, userType=userType, airline_name=airline_name))
     else:
@@ -205,10 +209,6 @@ def home():
 @app.route('/logout')
 @login_required
 def logout():
-    # session.pop('ID')
-    # userType = session.pop('userType')
-    # if userType == 'airline_staff':
-    #     session.pop('airline_name')
     session.clear()
     return redirect('/')
 
@@ -263,6 +263,7 @@ def staff_home():
         cursor = conn.cursor()
         cursor.execute(query, airline_name)
         data = cursor.fetchall()
+        cursor.close()
         return render_template('staff_home.html', ID=ID, userType=userType, result=data, airline_name=airline_name)
 
 
@@ -460,6 +461,355 @@ def show_trips():
     data = cursor.fetchall()
 
     return render_template('show_trips.html', airline_name=airline_name, result=data, customer_email=customer_email)
+
+
+#----------------------------- Code From Joyce --------------------------------------------------
+@app.route('/customer_home',methods = ['GET'])
+def customer_home():
+    ID = request.args.get('ID')
+    cursor = conn.cursor()
+    query1,args1=upcomingFlightsQuerry(ID)
+    cursor.execute(query1,args1)
+    entries = cursor.fetchall()
+    #track the spending by default date
+    query2,args2=defaultSpendingQuerry(ID)
+    cursor.execute(query2,args2)
+    spending = cursor.fetchone() 
+    #get the data the the bar chart
+    data=[]
+    for i in range(6):
+        date1 = datetime.now() - relativedelta(months=i+1)
+        date2 = datetime.now() - relativedelta(months=i)
+        cursor.execute(query2,(ID,date1.strftime('%Y-%m-%d'),date2.strftime('%Y-%m-%d')))
+        spending_mon = cursor.fetchone()
+        s = spending_mon['spending']
+        if s == None:
+            s = 0
+        data.append([i+1,float(s)])
+    return render_template('customer_home.html',entries = entries,data=data,ID=ID,spending=spending)
+
+
+@app.route('/customer_home_flights',methods=['GET','POST'])
+def customer_home_flights():
+    ID = session['ID']
+    cursor = conn.cursor()
+    query1,args1=upcomingFlightsQuerry(ID)
+    cursor.execute(query1,args1)
+    entries = cursor.fetchall()
+    #track the spending by default date
+    query2,args2=defaultSpendingQuerry(ID)
+    cursor.execute(query2,args2)
+    spending = cursor.fetchone() 
+    data=[]
+    for i in range(6):
+        date1 = datetime.now() - relativedelta(months=i+1)
+        date2 = datetime.now() - relativedelta(months=i)
+        cursor.execute(query2,(ID,date1.strftime('%Y-%m-%d'),date2.strftime('%Y-%m-%d')))
+        spending_mon = cursor.fetchone()
+        s = spending_mon['spending']
+        if s == None:
+            s = 0
+        data.append([i+1,float(s)])
+    if request.method == 'POST':
+        date1 = request.form['start_date']
+        date2 = request.form['end_date']
+        query = flightsQuery()
+        cursor.execute(query,(ID,date1,date2))
+        flight = cursor.fetchall()
+        return render_template('customer_home.html',flight=flight,entries = entries,data=data,ID=ID,spending=spending)
+    else:
+        return render_template('customer_home.html',entries = entries,data=data,ID=ID,spending=spending)
+'''
+    return render_template('customer_home.html',entries = entries,data=data,ID=ID,spending=spending)
+'''
+@app.route('/customer_home_spending',methods=['GET','POST'])
+def customer_home_spending():
+    ID = session['ID']
+    cursor = conn.cursor()
+    query1,args1=upcomingFlightsQuerry(ID)
+    cursor.execute(query1,args1)
+    entries = cursor.fetchall()
+    #track the spending by default date
+    query2,args2=defaultSpendingQuerry(ID)
+    cursor.execute(query2,args2)
+    spending = cursor.fetchone() 
+    data=[]
+    for i in range(6):
+        date1 = datetime.now() - relativedelta(months=i+1)
+        date2 = datetime.now() - relativedelta(months=i)
+        cursor.execute(query2,(ID,date1.strftime('%Y-%m-%d'),date2.strftime('%Y-%m-%d')))
+        spending_mon = cursor.fetchone()
+        s = spending_mon['spending']
+        if s == None:
+            s = 0
+        data.append([i+1,float(s)])
+    if request.method == 'POST':
+        date1 = request.form['start_date']
+        date2 = request.form['end_date']
+        query = spendingQuerry()
+        cursor.execute(query,(ID,date1,date2))
+        spend = cursor.fetchone()
+        return render_template('customer_home.html',spend=spend,ID=ID,date1=date1,date2=date2,spendinng=spending,entries=entries,data=data)
+    else:
+        return render_template('customer_home.html',ID=ID,spending=spending,entries=entries,data=data)
+
+    
+    
+@app.route('/customer_home_search',methods=['GET','POST'])
+def customer_home_search():
+    ID = session['ID']
+    cursor = conn.cursor()
+    query1,args1=upcomingFlightsQuerry(ID)
+    cursor.execute(query1,args1)
+    entries = cursor.fetchall()
+    #track the spending by default date
+    query2,args2=defaultSpendingQuerry(ID)
+    cursor.execute(query2,args2)
+    spending = cursor.fetchone()
+    data=[]
+    for i in range(6):
+        date1 = datetime.now() - relativedelta(months=i+1)
+        date2 = datetime.now() - relativedelta(months=i)
+        cursor.execute(query2,(ID,date1.strftime('%Y-%m-%d'),date2.strftime('%Y-%m-%d')))
+        spending_mon = cursor.fetchone()
+        s = spending_mon['spending']
+        if s == None:
+            s = 0
+        data.append([i+1,float(s)])
+    if request.method == 'POST':
+        if flightSearchValidation(request):
+            query, args = flightSearchQuery(request)
+            cursor.execute(query, args)
+            search = cursor.fetchall()
+            return render_template('customer_home.html', result=search,ID=ID,entries=entries,data=data,spending=spending)
+        else:
+            return render_template('customer_home.html', entries=entries,data=data,spending=spending,ID=ID,error="Please enter departure city/airport, arrival city/airport and travel date")
+    else:
+        return render_template('customer_home.html',ID=ID,entries=entries,data=data,spending=spending)
+
+
+
+@app.route('/customer_home_purchase',methods=['GET','POST'])
+def customer_home_purchase():
+    ID = session['ID']
+    cursor = conn.cursor()
+    query1,args1=upcomingFlightsQuerry(ID)
+    cursor.execute(query1,args1)
+    entries = cursor.fetchall()
+    #track the spending by default date
+    query2,args2=defaultSpendingQuerry(ID)
+    cursor.execute(query2,args2)
+    spending = cursor.fetchone()
+    data=[]
+    for i in range(6):
+        date1 = datetime.now() - relativedelta(months=i+1)
+        date2 = datetime.now() - relativedelta(months=i)
+        cursor.execute(query2,(ID,date1.strftime('%Y-%m-%d'),date2.strftime('%Y-%m-%d')))
+        spending_mon = cursor.fetchone()
+        s = spending_mon['spending']
+        if s == None:
+            s = 0
+        data.append([i+1,float(s)])
+    if request.method == 'POST':
+        flight_num = request.form['flight_num']
+        airline_name = request.form['airline_name']
+        cursor = conn.cursor()
+        query3 = 'SELECT COUNT(ticket_id) AS num FROM ticket'
+        cursor.execute(query3)
+        num = cursor.fetchone()
+        ticket_id = num['num']+1
+        today = datetime.today().strftime('%Y-%m-%d')
+        query1 = 'INSERT INTO ticket VALUES(%s,%s,%s);'
+        query2 = 'INSERT INTO purchases VALUES(%s,%s,NULL,%s)'
+        cursor.execute(query1,(ticket_id,airline_name,flight_num))
+        conn.commit()
+        cursor.execute(query2,(ticket_id,ID,today))
+        conn.commit()
+    return render_template('customer_home.html',purchase='You have sucessfully purchased the ticket',ID=ID,entries=entries,data=data,spending=spending)
+
+
+
+
+#user cases for booking agent
+@app.route('/agent_home')
+def agent_home():
+    ID = request.args.get('ID')
+    agent_id = request.args.get('booking_agent_id')
+    #get upcomming flights
+    query1,args1 = upcomingAgentFlights(agent_id)
+    cursor = conn.cursor()
+    cursor.execute(query1,args1)
+    entries = cursor.fetchall()
+    #calculate commission
+    query2,args2 = commissionQuery(agent_id)
+    cursor.execute(query2,args2)
+    commission = cursor.fetchone()
+    #total num of tickets
+    query3,args3 = numTickQuery(agent_id)
+    cursor.execute(query3,args3)
+    num_ticket = cursor.fetchone()
+    #avg commission
+    query4,args4 = avgComm(agent_id)
+    cursor.execute(query4,args4)
+    avg_comm = cursor.fetchone()
+    #top 5 customers based on num_tick
+    query5,args5 = custTicket(agent_id)
+    cursor.execute(query5,args5)
+    cust_tk = cursor.fetchall()
+    cust_tk_data = []
+    
+    for item in cust_tk:
+        cust_tk_data.append([item['name'],item['num_ticket']])
+    #top 5 customers based on amount of commssion
+    query6,args6 = custComm(agent_id)
+    cursor.execute(query6,args6)
+    cust_comm = cursor.fetchall()
+    cust_comm_data=[]
+    for item in cust_comm:
+        cust_comm_data.append([item['name'],float(item['commission'])])
+    return render_template('agent_home.html',cust_tk=cust_tk,cust_comm=cust_comm,commission=commission,num_ticket=num_ticket,avg_comm=avg_comm,entries=entries, ID = ID,agent_id=agent_id, cust_tk_data=cust_tk_data, cust_comm_data=cust_comm_data)
+
+@app.route('/agent_home_flights',methods=['GET','POST'])
+def agent_home_flights():
+    ID = session['ID']
+    agent_id = session['booking_agent_id']
+     #get upcomming flights
+    query1,args1 = upcomingAgentFlights(agent_id)
+    cursor = conn.cursor()
+    cursor.execute(query1,args1)
+    entries = cursor.fetchall()
+    #calculate commission
+    query2,args2 = commissionQuery(agent_id)
+    cursor.execute(query2,args2)
+    commission = cursor.fetchone()
+    #total num of tickets
+    query3,args3 = numTickQuery(agent_id)
+    cursor.execute(query3,args3)
+    num_ticket = cursor.fetchone()
+    #avg commission
+    query4,args4 = avgComm(agent_id)
+    cursor.execute(query4,args4)
+    avg_comm = cursor.fetchone()
+    #top 5 customers based on num_tick
+    query5,args5 = custTicket(agent_id)
+    cursor.execute(query5,args5)
+    cust_tk = cursor.fetchall()
+    #top 5 customers based on amount of commssion
+    query6,args6 = custComm(agent_id)
+    cursor.execute(query6,args6)
+    cust_comm = cursor.fetchall()
+    if request.method == 'POST':
+        date1 = request.form['start_date']
+        date2 = request.form['end_date']
+        query = viewFlights()
+        cursor.execute(query,(agent_id,date1,date2))
+        flight = cursor.fetchall()
+        return render_template('agent_home.html',flight=flight,cust_tk=cust_tk,cust_comm=cust_comm,commission=commission,num_ticket=num_ticket,avg_comm=avg_comm,entries=entries, ID = ID,agent_id=agent_id)
+    else:
+        return render_template('agent_home.html',cust_tk=cust_tk,cust_comm=cust_comm,commission=commission,num_ticket=num_ticket,avg_comm=avg_comm,entries=entries, ID = ID,agent_id=agent_id)
+
+    
+@app.route('/agent_home_search',methods=['GET','POST'])
+def agent_home_search():
+    ID = session['ID']
+    agent_id=session['booking_agent_id']
+    #get upcomming flights
+    query1,args1 = upcomingAgentFlights(agent_id)
+    cursor = conn.cursor()
+    cursor.execute(query1,args1)
+    entries = cursor.fetchall()
+    #calculate commission
+    query2,args2 = commissionQuery(agent_id)
+    cursor.execute(query2,args2)
+    commission = cursor.fetchone()
+    #total num of tickets
+    query3,args3 = numTickQuery(agent_id)
+    cursor.execute(query3,args3)
+    num_ticket = cursor.fetchone()
+    #avg commission
+    query4,args4 = avgComm(agent_id)
+    cursor.execute(query4,args4)
+    avg_comm = cursor.fetchone()
+    #top 5 customers based on num_tick
+    query5,args5 = custTicket(agent_id)
+    cursor.execute(query5,args5)
+    cust_tk = cursor.fetchall()
+    #top 5 customers based on amount of commssion
+    query6,args6 = custComm(agent_id)
+    cursor.execute(query6,args6)
+    cust_comm = cursor.fetchall()
+    if request.method == 'POST':
+        if flightSearchValidation(request):
+            query1, args = flightSearchQuery(request)
+            cursor.execute(query1, args)
+            search = cursor.fetchall()
+            return render_template('agent_home.html',search=search,cust_tk=cust_tk,cust_comm=cust_comm,commission=commission,num_ticket=num_ticket,avg_comm=avg_comm,entries=entries, ID = ID,agent_id=agent_id)
+        else:
+            return render_template('agent_home.html',cust_tk=cust_tk,cust_comm=cust_comm,commission=commission,num_ticket=num_ticket,avg_comm=avg_comm,entries=entries, ID = ID,agent_id=agent_id,error="Please enter departure city/airport, arrival city/airport and travel date")
+    else:
+        return render_template('agent_home.html',cust_tk=cust_tk,cust_comm=cust_comm,commission=commission,num_ticket=num_ticket,avg_comm=avg_comm,entries=entries, ID = ID,agent_id=agent_id)
+
+
+@app.route('/agent_home_purchase',methods=['GET','POST'])
+def agent_home_purchase():
+    ID = session['ID']
+    agent_id = session['booking_agent_id']
+    #get upcomming flights
+    query1,args1 = upcomingAgentFlights(agent_id)
+    cursor = conn.cursor()
+    cursor.execute(query1,args1)
+    entries = cursor.fetchall()
+    #calculate commission
+    query2,args2 = commissionQuery(agent_id)
+    cursor.execute(query2,args2)
+    commission = cursor.fetchone()
+    #total num of tickets
+    query3,args3 = numTickQuery(agent_id)
+    cursor.execute(query3,args3)
+    num_ticket = cursor.fetchone()
+    #avg commission
+    query4,args4 = avgComm(agent_id)
+    cursor.execute(query4,args4)
+    avg_comm = cursor.fetchone()
+    #top 5 customers based on num_tick
+    query5,args5 = custTicket(agent_id)
+    cursor.execute(query5,args5)
+    cust_tk = cursor.fetchall()
+    #top 5 customers based on amount of commssion
+    query6,args6 = custComm(agent_id)
+    cursor.execute(query6,args6)
+    cust_comm = cursor.fetchall()
+    if request.method == 'POST':
+        email = request.form['customer_email']
+        query = 'SELECT email FROM customer'
+        cursor.execute(query)
+        emails = cursor.fetchall()
+        email_list = []
+        for item in emails:
+            email_list.append(item['email'])
+        if email in email_list:
+            flight_num = request.form['flight_num']
+            airline_name = request.form['airline_name']
+            query7 = 'SELECT COUNT(ticket_id) AS num FROM ticket'
+            cursor.execute(query7)
+            num = cursor.fetchone()
+            ticket_id = num['num']+1
+            today = datetime.today().strftime('%Y-%m-%d')
+            query8 = 'INSERT INTO ticket VALUES(%s,%s,%s);'
+            query9 = 'INSERT INTO purchases VALUES(%s,%s,%s,%s)'
+            cursor.execute(query8,(ticket_id,airline_name,flight_num))
+            conn.commit()
+            cursor.execute(query9,(ticket_id,email,agent_id,today))
+            conn.commit()
+            message = 'Your have successfully purchased the ticket'
+        else:
+            message = 'The customer email does not exist in our system'
+    else:
+        message = 'There\'s something wrong. Try again'
+    return render_template('agent_home.html',purchase=message,cust_tk=cust_tk,cust_comm=cust_comm,commission=commission,num_ticket=num_ticket,avg_comm=avg_comm,entries=entries, ID = ID,agent_id=agent_id)
+
+
+
 
 		
 app.secret_key = 'some key that you will never guess'

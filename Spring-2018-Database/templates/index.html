@@ -7,12 +7,68 @@
 
 <body>
 {% if not message %}
-	<a href="/login">Login</a>
-	<a href="/userselect">Register</a>
-	<a href="/home">Guest</a>
+	<div class="login"><a href="/login">LOG IN</a></div>
+	<div class="register"><a href="/userselect">SIGN UP</a></div>
+	<div class="guest"><a href="/home">CONTINUE AS GUEST</a></div>
 {% endif %}
 
+<p>produced by Xiangyu Fan, Ziming Sheng</p>
 
 </body>
+
+<style>
+    body{
+        background-image: url("https://hips.hearstapps.com/hmg-prod.s3.amazonaws.com/images/gettyimages-155380716-1515014614.jpg");
+        background-size: cover;
+    }
+    h{
+        font-family: "Arial", Courier, monospace;
+        font-size: 30px;
+        color: white;
+        position: fixed;
+        top: 30px;
+        left: 30px;
+    }
+    .login a:visited{
+        color:white;
+    }
+    .login{
+        position: fixed;
+        left:750px;
+        top:150px;
+        font:"Arial";
+        font-size: 20px;
+
+    }
+    .register a:visited{
+        color:white;
+    }
+    .register{
+        position: fixed;
+        left:750px;
+        top: 225px;
+        font:"Arial";
+        font-size: 20px;
+    }
+
+    .guest a:visited{
+        color: white;
+    }
+    .guest{
+        position: fixed;
+        left: 750px;
+        top: 300px;
+        font:"Arial";
+        font-size: 20px;
+    }
+
+    p{
+        position: fixed;
+        left: 750px;
+        top: 450px;
+        color: white;
+        font-size: 15px;
+    }
+</style>
 
 </html>
